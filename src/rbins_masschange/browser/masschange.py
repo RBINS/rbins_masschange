@@ -23,7 +23,8 @@ from collective.z3cform.keywordwidget.field import Keywords
 from z3c.relationfield.schema import RelationList, Relation, RelationChoice
 from plone.formwidget.contenttree import ObjPathSourceBinder
 
-from rbins_masschange.skin.skin import MessageFactory as _
+from zope.i18nmessageid import MessageFactory
+_ = MessageFactory('rbins_masschange')
 
 logger = logging.getLogger('rbins_masschange.masschange')
 

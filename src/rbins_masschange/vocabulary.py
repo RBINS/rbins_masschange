@@ -10,7 +10,7 @@ from zope.schema.interfaces import IVocabularyFactory, IContextSourceBinder
 
 from plone.i18n.normalizer.base import baseNormalize
 
-from rbins_masschange.skin.utils import magicstring, infolder_keywords
+from rbins_masschange.utils import magicstring, infolder_keywords
 
 
 def uniquify(t):

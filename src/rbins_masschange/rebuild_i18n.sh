@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 PRODUCTNAME='rbins_masschange'
 I18NDOMAIN=$PRODUCTNAME
-i18ndude=$(which i18ndude)
 CWD=$(dirname $0)
 cd ${CWD}
+CWD=$PWD
+export PATH=$CWD/../../../../bin:$CWD/../../bin:$PATH
+echo $PATH
+i18ndude=$(which i18ndude)
 echo "Using ${i18ndude} in ${CWD}"
 # Synchronise the .pot with the templates.
 ${i18ndude} rebuild-pot --pot locales/${PRODUCTNAME}.pot --merge locales/${PRODUCTNAME}-manual.pot --create ${I18NDOMAIN} . ../../../../mars.policy/
