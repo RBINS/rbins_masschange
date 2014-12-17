@@ -1,0 +1,12 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="rbins_masschange">
+  <include package="collective.z3cform.keywordwidget"/>
+  <browser:page
+      for="*"
+      name="rbins_masschange_form"
+      class=".masschange.masschange_form_frame"
+      permission="cmf.ManagePortal" />
+<!-- vim:set ft=xml: -->
+</configure>

@@ -1,0 +1,6 @@
+src/mars/policy/aviary.txt
+*pyc
+*~lock*
+*~
+*egg-info
+*.mo
