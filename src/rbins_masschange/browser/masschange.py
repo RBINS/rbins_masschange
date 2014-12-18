@@ -40,6 +40,7 @@ try:
     HAS_W = True
 except ImportError:
     HAS_W = False
+    from plone.formwidget.contenttree import ObjPathSourceBinder
 
 _ = MessageFactory('rbins_masschange')
 logger = logging.getLogger('rbins_masschange.masschange')
@@ -58,26 +59,45 @@ output_type_vocab = SimpleVocabulary(
 
 class IMassChangeSchema(interface.Interface):
     """Define masschange form fields"""
-    if not HAS_W:
-        from plone.formwidget.contenttree import ObjPathSourceBinder
-        directives.widget('local_keywords', InAndOutKeywordWidget)
+    #directives.widget('local_keywords', InAndOutKeywordWidget)
 
-        selected_obj_paths = RelationList(
-            title=u"Objects to change tags",
-            required=True,
-            default=[],
-            value_type=RelationChoice(
-                title=u"Related",
-                source=ObjPathSourceBinder()))
+    selected_obj_paths = RelationList(
+        title=u"Objects to change tags",
+        required=True,
+        default=[],
+        value_type=RelationChoice(
+            title=u"Related",
+            source=ObjPathSourceBinder()))
 
-        related_obj_paths = RelationList(
-            title=u"Objects to link with",
-            required=False,
-            default=[],
-            value_type=RelationChoice(
-                title=u"Link with those objects",
-                source=ObjPathSourceBinder()))
-    else:
+    related_obj_paths = RelationList(
+        title=u"Objects to link with",
+        required=False,
+        default=[],
+        value_type=RelationChoice(
+            title=u"Link with those objects",
+            source=ObjPathSourceBinder()))
+
+    local_keywords = zope.schema.List(
+        title=u"Keywords from this folder",
+        required=False,
+        description=u"Keyword (local)",
+        value_type=zope.schema.Choice(
+            vocabulary='rbins_masschange.localKeywords'))
+
+    keywords = Keywords(
+        title=u"keywords",
+        description=u"Keyword (general)",
+        required=False,
+        index_name='Subject')
+
+    manual_keywords = zope.schema.List(
+        title=u"Keywords to add", required=False,
+        value_type=(zope.schema.TextLine()))
+
+
+if HAS_W:
+    class IMassChangeSchema(IMassChangeSchema):
+        """Define masschange form fields"""
         directives.widget('selected_obj_paths', RelatedItemsWidget)
         directives.widget('related_obj_paths', RelatedItemsWidget)
 
@@ -96,23 +116,6 @@ class IMassChangeSchema(interface.Interface):
             value_type=RelationChoice(
                 title=u"Link with those objects",
                 vocabulary="plone.app.vocabularies.Catalog"))
-
-    local_keywords = zope.schema.List(
-        title=u"Keywords from this folder",
-        required=False,
-        description=u"Keyword (local)",
-        value_type=zope.schema.Choice(
-            vocabulary='rbins_masschange.localKeywords'))
-
-    keywords = Keywords(
-        title=u"keywords",
-        description=u"Keyword (general)",
-        required=False,
-        index_name='Subject')
-
-    manual_keywords = zope.schema.List(
-        title=u"Keywords to add", required=False,
-        value_type=(zope.schema.TextLine()))
 
 
 def default_keywords(self):
@@ -217,8 +220,12 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             oldk.sort()
             if keywords != oldk:
                 try:
-                    item.setSubject(keywords)
-                    changed = True
+                    try:
+                        item.setSubject(keywords)
+                        changed = True
+                    except AttributeError:
+                        item.subject = keywords
+                        changed = True
                 except Exception:
                     trace = traceback.format_exc()
                     msg = ('<li>%s %s: cant change keywords '
