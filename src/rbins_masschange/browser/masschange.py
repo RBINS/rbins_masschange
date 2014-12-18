@@ -6,6 +6,7 @@ from plone.uuid.interfaces import IUUID
 from Products.CMFCore.utils import getToolByName
 import zope.schema
 from zope import component, interface
+from zope.intid.interfaces import IIntIds
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
 import logging
 
@@ -184,7 +185,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 try:
                     related = item.getRelatedItems()
 
-                    def additem(xxx):
+                    def additem(xxx, related):
                         changed = False
                         xxx = [x for x in xxx if x not in related]
                         if xxx:
@@ -196,20 +197,26 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 # dexterity
                 if not additem:
                     try:
-                        related = BIRelatedItems(self.context).relatedItems
+                        related = BIRelatedItems(item).relatedItems
 
-                        def additem(xxx):
+                        def additem(xxx, related):
                             changed = False
+                            related = []
                             xxx = [x for x in xxx if x not in related]
-                            if xxx:
-                                BIRelatedItems(self.context).relatedItems = (
-                                    related + xxx)
+                            if True or xxx:
+                                intids = component.getUtility(IIntIds)
+                                BIRelatedItems(item).relatedItems = (
+                                    [RelationValue(intids.getId(obj)) 
+                                     for obj in (related + xxx)])
+                                #BIRelatedItems(item).relatedItems = (
+                                #    [RelationValue(IUUID(obj)) 
+                                #     for obj in (related + xxx)])
                                 changed = True
                             return changed
                     except Exception:
                         additem = None
                 if additem is not None:
-                    changed = additem(data['related_obj_paths'])
+                    changed = additem(data['related_obj_paths'], related)
             try:
                 oldk = [a for a in self.context.Subject()]
             except:
