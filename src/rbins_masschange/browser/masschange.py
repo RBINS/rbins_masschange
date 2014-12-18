@@ -61,43 +61,23 @@ class IMassChangeSchema(interface.Interface):
     """Define masschange form fields"""
     #directives.widget('local_keywords', InAndOutKeywordWidget)
 
-    selected_obj_paths = RelationList(
-        title=u"Objects to change tags",
-        required=True,
-        default=[],
-        value_type=RelationChoice(
-            title=u"Related",
-            source=ObjPathSourceBinder()))
+    if not HAS_W:
+        selected_obj_paths = RelationList(
+            title=u"Objects to change tags",
+            required=True,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Related",
+                source=ObjPathSourceBinder()))
 
-    related_obj_paths = RelationList(
-        title=u"Objects to link with",
-        required=False,
-        default=[],
-        value_type=RelationChoice(
-            title=u"Link with those objects",
-            source=ObjPathSourceBinder()))
-
-    local_keywords = zope.schema.List(
-        title=u"Keywords from this folder",
-        required=False,
-        description=u"Keyword (local)",
-        value_type=zope.schema.Choice(
-            vocabulary='rbins_masschange.localKeywords'))
-
-    keywords = Keywords(
-        title=u"keywords",
-        description=u"Keyword (general)",
-        required=False,
-        index_name='Subject')
-
-    manual_keywords = zope.schema.List(
-        title=u"Keywords to add", required=False,
-        value_type=(zope.schema.TextLine()))
-
-
-if HAS_W:
-    class IMassChangeSchema(IMassChangeSchema):
-        """Define masschange form fields"""
+        related_obj_paths = RelationList(
+            title=u"Objects to link with",
+            required=False,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Link with those objects",
+                source=ObjPathSourceBinder()))
+    else:
         directives.widget('selected_obj_paths', RelatedItemsWidget)
         directives.widget('related_obj_paths', RelatedItemsWidget)
 
@@ -115,7 +95,24 @@ if HAS_W:
             default=[],
             value_type=RelationChoice(
                 title=u"Link with those objects",
-                vocabulary="plone.app.vocabularies.Catalog"))
+                vocabulary="plone.app.vocabularies.Catalog")) 
+
+    local_keywords = zope.schema.List(
+        title=u"Keywords from this folder",
+        required=False,
+        description=u"Keyword (local)",
+        value_type=zope.schema.Choice(
+            vocabulary='rbins_masschange.localKeywords'))
+
+    keywords = Keywords(
+        title=u"keywords",
+        description=u"Keyword (general)",
+        required=False,
+        index_name='Subject')
+
+    manual_keywords = zope.schema.List(
+        title=u"Keywords to add", required=False,
+        value_type=(zope.schema.TextLine()))
 
 
 def default_keywords(self):
