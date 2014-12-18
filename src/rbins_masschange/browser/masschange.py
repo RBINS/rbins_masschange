@@ -201,7 +201,6 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
 
                         def additem(xxx, related):
                             changed = False
-                            related = []
                             xxx = [x for x in xxx if x not in related]
                             if True or xxx:
                                 intids = component.getUtility(IIntIds)
