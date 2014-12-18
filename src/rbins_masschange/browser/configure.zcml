@@ -8,5 +8,12 @@
       name="rbins_masschange_form"
       class=".masschange.masschange_form_frame"
       permission="cmf.ManagePortal" />
+  <!--
+   <browser:page
+      for="*"
+      name="rbins_masschange_form"
+      class=".masschange.MassChangeForm"
+      permission="cmf.ManagePortal" />
+    -->
 <!-- vim:set ft=xml: -->
 </configure>

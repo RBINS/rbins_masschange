@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 __docformat__ = 'restructuredtext en'
 import traceback
+from plone.uuid.interfaces import IUUID
+from Products.CMFCore.utils import getToolByName
 import zope.schema
 from zope import component, interface
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
@@ -11,23 +13,36 @@ from zope.schema.vocabulary import SimpleVocabulary
 from zope.schema.vocabulary import SimpleTerm
 
 import z3c.form
+from z3c.relationfield import RelationValue
 
 from zope.interface import invariant, Invalid
 
 import plone.app.z3cform
 import plone.z3cform.templates
 from z3c.form.interfaces import ActionExecutionError, WidgetActionExecutionError
-from collective.z3cform.keywordwidget.widget import KeywordFieldWidget, InAndOutKeywordFieldWidget
+from plone.autoform.form import AutoExtensibleForm
+from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
+from collective.z3cform.keywordwidget.widget import (
+    KeywordFieldWidget,
+    InAndOutKeywordFieldWidget,
+    InAndOutKeywordWidget)
 from collective.z3cform.keywordwidget.field import Keywords
 
 from z3c.relationfield.schema import RelationList, Relation, RelationChoice
-from plone.formwidget.contenttree import ObjPathSourceBinder
 
+from plone.autoform import directives
 from zope.i18nmessageid import MessageFactory
+
+
+try:
+    from plone.app.widgets.dx import (RelatedItemsFieldWidget,
+                                      RelatedItemsWidget)
+    HAS_W = True
+except ImportError:
+    HAS_W = False
+
 _ = MessageFactory('rbins_masschange')
-
 logger = logging.getLogger('rbins_masschange.masschange')
-
 
 def make_terms(items):
     """ Create zope.schema terms for vocab from tuples """
@@ -43,56 +58,70 @@ output_type_vocab = SimpleVocabulary(
 
 class IMassChangeSchema(interface.Interface):
     """Define masschange form fields"""
+    if not HAS_W:
+        from plone.formwidget.contenttree import ObjPathSourceBinder
+        directives.widget('local_keywords', InAndOutKeywordWidget)
 
-    selected_obj_paths = RelationList(
-        title=u"Objects to change tags",
-        required=True,
-        default=[],
-        value_type=RelationChoice(
-            title=u"Related",
-            source=ObjPathSourceBinder()),
-    )
+        selected_obj_paths = RelationList(
+            title=u"Objects to change tags",
+            required=True,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Related",
+                source=ObjPathSourceBinder()))
 
-    related_obj_paths = RelationList(
-        title=u"Objects to link with",
-        required=False,
-        default=[],
-        value_type=RelationChoice(
-            title=u"Link with those objects",
-            source=ObjPathSourceBinder()),
-    )
+        related_obj_paths = RelationList(
+            title=u"Objects to link with",
+            required=False,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Link with those objects",
+                source=ObjPathSourceBinder()))
+    else:
+        directives.widget('selected_obj_paths', RelatedItemsWidget)
+        directives.widget('related_obj_paths', RelatedItemsWidget)
+
+        selected_obj_paths = RelationList(
+            title=u"Objects to change tags",
+            required=True,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Related",
+                vocabulary="plone.app.vocabularies.Catalog"))
+
+        related_obj_paths = RelationList(
+            title=u"Objects to link with",
+            required=False,
+            default=[],
+            value_type=RelationChoice(
+                title=u"Link with those objects",
+                vocabulary="plone.app.vocabularies.Catalog"))
 
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
         required=False,
         description=u"Keyword (local)",
         value_type=zope.schema.Choice(
-            vocabulary='rbins_masschange.localKeywords',
-        )
-    )
+            vocabulary='rbins_masschange.localKeywords'))
 
     keywords = Keywords(
         title=u"keywords",
         description=u"Keyword (general)",
         required=False,
-        index_name='Subject',
-    )
+        index_name='Subject')
 
     manual_keywords = zope.schema.List(
         title=u"Keywords to add", required=False,
-        value_type=(zope.schema.TextLine())
-    )
-
+        value_type=(zope.schema.TextLine()))
 
 
 def default_keywords(self):
     return self.view.old_keywords[:]
 
 
-class MassChangeForm(z3c.form.form.Form):
+class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
     """ A form to output a HTML masschange from chosen parameters """
-    fields = z3c.form.field.Fields(IMassChangeSchema)
-    fields['keywords'].widgetFactory = InAndOutKeywordFieldWidget
+    schema = IMassChangeSchema
     ignoreContext = True
 
     def update(self):
@@ -108,12 +137,21 @@ class MassChangeForm(z3c.form.form.Form):
                 try:
                     v = str(item)
                     self.context.restrictedTraverse(v)
-                    #obs.append(v)
                     obs.append(item)
                 except:
                     pass
         ret = super(MassChangeForm, self).update()
         if obs:
+            if HAS_W:
+                portal = getToolByName(self.context,
+                                       'portal_url').getPortalObject()
+                uids = []
+                for i in obs:
+                    try:
+                        uids.append(IUUID(portal.restrictedTraverse(obs[0])))
+                    except Exception:
+                        continue
+                obs = self.widgets[sson].separator.join(uids)
             self.request.form[u'form.widgets.%s' % sson] = obs
             self.widgets[sson].update()
         return ret
@@ -137,32 +175,50 @@ class MassChangeForm(z3c.form.form.Form):
         keywords.sort()
         self.logs, ilogs = [], []
         for item in data['selected_obj_paths']:
+            ppath = '/'.join(item.getPhysicalPath())
+            changed = False
             if data['related_obj_paths']:
                 # item support related items
-                related, at, dexterity = [], False, False
+                related = []
+                # archetypes
                 try:
                     related = item.getRelatedItems()
-                    at = True
+
+                    def additem(xxx):
+                        changed = False
+                        xxx = [x for x in xxx if x not in related]
+                        if xxx:
+                            item.setRelatedItems(related + xxx)
+                            changed = True
+                        return changed
                 except Exception:
-                    at = False
-                if not isinstance(related, list):
-                    related = []
-                for i in data['related_obj_paths']:
-                    if i not in related:
-                        related.append(i)
-                if at:
-                    item.setRelatedItems(related)
+                    additem = None
+                # dexterity
+                if not additem:
+                    try:
+                        related = BIRelatedItems(self.context).relatedItems
+
+                        def additem(xxx):
+                            changed = False
+                            xxx = [x for x in xxx if x not in related]
+                            if xxx:
+                                BIRelatedItems(self.context).relatedItems = (
+                                    related + xxx)
+                                changed = True
+                            return changed
+                    except Exception:
+                        additem = None
+                if additem is not None:
+                    changed = additem(data['related_obj_paths'])
             try:
                 oldk = [a for a in self.context.Subject()]
             except:
                 oldk = []
             oldk.sort()
             if keywords != oldk:
-                ppath = '/'.join(item.getPhysicalPath())
                 try:
                     item.setSubject(keywords)
-                    item.reindexObject('Subject')
-                    ilogs.append('<li>%s changed</li>\n' % ppath)
+                    changed = True
                 except Exception:
                     trace = traceback.format_exc()
                     msg = ('<li>%s %s: cant change keywords '
@@ -170,6 +226,9 @@ class MassChangeForm(z3c.form.form.Form):
                                ppath, keywords, trace)
                     logger.error(msg)
                     ilogs.append(msg)
+            if changed:
+                ilogs.append('<li>%s changed</li>\n' % ppath)
+                item.reindexObject()
         if ilogs:
             ilogs.insert(0, u"<strong>MassChange complete</strong>")
             ilogs.insert(0, u"<ul>")
@@ -177,13 +236,13 @@ class MassChangeForm(z3c.form.form.Form):
         self.logs.extend(ilogs)
         self.logs = '\n'.join(self.logs)
 
+
 for k in ('keywords', 'local_keywords',):
     component.provideAdapter(
         z3c.form.widget.ComputedWidgetAttribute(
             default_keywords,
             field=IMassChangeSchema[k],
-            view=MassChangeForm,
-        ),
+            view=MassChangeForm),
         name="default")
 
 
