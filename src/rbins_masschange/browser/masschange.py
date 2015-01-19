@@ -96,7 +96,7 @@ class IMassChangeSchema(interface.Interface):
             default=[],
             value_type=RelationChoice(
                 title=u"Link with those objects",
-                vocabulary="plone.app.vocabularies.Catalog")) 
+                vocabulary="plone.app.vocabularies.Catalog"))
 
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
@@ -131,9 +131,21 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             self.old_keywords = [a for a in self.context.Subject()]
         except:
             pass
+        psson = 'paths'
         sson = 'selected_obj_paths'
         obs = []
-        if sson in self.request.form:
+        pssonvalues = self.request.form.get(psson, [])
+        # coming from folder_contents with filters
+        if isinstance(pssonvalues, list) and pssonvalues:
+            for item in pssonvalues:
+                try:
+                    v = str(item)
+                    self.context.restrictedTraverse(v)
+                    obs.append(item)
+                except:
+                    pass
+        # coming from other cases
+        elif sson in self.request.form:
             for item in self.request.form[sson]:
                 try:
                     v = str(item)
@@ -205,10 +217,10 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                             if True or xxx:
                                 intids = component.getUtility(IIntIds)
                                 BIRelatedItems(item).relatedItems = (
-                                    [RelationValue(intids.getId(obj)) 
+                                    [RelationValue(intids.getId(obj))
                                      for obj in (related + xxx)])
                                 #BIRelatedItems(item).relatedItems = (
-                                #    [RelationValue(IUUID(obj)) 
+                                #    [RelationValue(IUUID(obj))
                                 #     for obj in (related + xxx)])
                                 changed = True
                             return changed
