@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<configure
+  xmlns="http://namespaces.zope.org/zope"
+  xmlns:five="http://namespaces.zope.org/five"
+  xmlns:i18n="http://namespaces.zope.org/i18n"
+  xmlns:browser="http://namespaces.zope.org/browser"
+  xmlns:cmf="http://namespaces.zope.org/cmf"
+  xmlns:monkey="http://namespaces.plone.org/monkey"
+  xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+  i18n_domain="rbins_masschange">
+  <permission id="rbins.masschange" title="rbins.masschange"/>
+  <!-- vim:set ft=xml: -->
+</configure> 

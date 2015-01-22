@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <configure
   xmlns="http://namespaces.zope.org/zope"
   xmlns:five="http://namespaces.zope.org/five"
@@ -8,10 +9,19 @@
   xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
   i18n_domain="rbins_masschange">
   <include package=".browser" />
+  <include package="rbins_masschange" file="permissions.zcml"/>
   <utility
     component=".vocabulary.LocalSubjectsVocabulary"
     name="rbins_masschange.localKeywords"
     />
   <five:registerPackage package="." initialize=".initialize" />
-<!-- vim:set ft=xml: -->
+  <genericsetup:registerProfile
+    name="default"
+    title="rbins_masschange"
+    description="rbins_masschange"
+    directory="profiles/default"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    provides="Products.GenericSetup.interfaces.EXTENSION"
+    />
+  <!-- vim:set ft=xml: -->
 </configure>
