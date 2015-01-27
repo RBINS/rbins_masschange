@@ -135,6 +135,18 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         sson = 'selected_obj_paths'
         obs = []
         pssonvalues = self.request.form.get(psson, [])
+        ssonvalues = self.request.form.get(sson, [])
+        tp = self.request.form.get('orig_template', '')
+        # coming from folder_contents with filters and collections
+        if (
+            tp in ['folder_contents']
+            and isinstance(pssonvalues, list) and pssonvalues
+            and isinstance(ssonvalues, list) and ssonvalues
+        ):
+            if len(ssonvalues) > len(pssonvalues):
+                pssonvalues = ssonvalues
+            self.request.form.pop(psson, None)
+            self.request.form.update({sson: obs})
         # coming from folder_contents with filters
         if isinstance(pssonvalues, list) and pssonvalues:
             for item in pssonvalues:
@@ -161,7 +173,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 uids = []
                 for i in obs:
                     try:
-                        uids.append(IUUID(portal.restrictedTraverse(obs[0])))
+                        uids.append(IUUID(portal.restrictedTraverse(i)))
                     except Exception:
                         continue
                 obs = self.widgets[sson].separator.join(uids)
