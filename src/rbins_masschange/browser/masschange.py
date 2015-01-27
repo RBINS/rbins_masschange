@@ -6,6 +6,8 @@ from plone.uuid.interfaces import IUUID
 from Products.CMFCore.utils import getToolByName
 import zope.schema
 from zope import component, interface
+from zope.component import adapter
+from zope.interface import implementer
 from zope.intid.interfaces import IIntIds
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
 import logging
@@ -14,13 +16,16 @@ from zope.schema.vocabulary import SimpleVocabulary
 from zope.schema.vocabulary import SimpleTerm
 
 import z3c.form
+from z3c.form.util import getSpecification
+from z3c.form.widget import FieldWidget
 from z3c.relationfield import RelationValue
+from z3c.form.interfaces import IFieldWidget
 
 from zope.interface import invariant, Invalid
-
 import plone.app.z3cform
 import plone.z3cform.templates
 from z3c.form.interfaces import ActionExecutionError, WidgetActionExecutionError
+from plone.app.dexterity.behaviors.metadata import IOwnership
 from plone.autoform.form import AutoExtensibleForm
 from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
 from collective.z3cform.keywordwidget.widget import (
@@ -33,10 +38,13 @@ from z3c.relationfield.schema import RelationList, Relation, RelationChoice
 
 from plone.autoform import directives
 from zope.i18nmessageid import MessageFactory
+from z3c.form.interfaces import IFormLayer
 
 
 try:
+    from plone.app.widgets.interfaces import IWidgetsLayer
     from plone.app.widgets.dx import (RelatedItemsFieldWidget,
+                                      AjaxSelectWidget,
                                       RelatedItemsWidget)
     HAS_W = True
 except ImportError:
@@ -115,6 +123,25 @@ class IMassChangeSchema(interface.Interface):
         title=u"Keywords to add", required=False,
         value_type=(zope.schema.TextLine()))
 
+    contributors = zope.schema.Text(
+        title=u"contributors",
+        description=u"Contributors (one per line)",
+        required=False)
+
+    rights = zope.schema.Text(
+        title=u"rights",
+        description=u"Rights",
+        required=False)
+
+if HAS_W:
+    @adapter(getSpecification(IMassChangeSchema['contributors']), IFormLayer)
+    @implementer(IFieldWidget)
+    def ContributorsFieldWidget(field, request):
+        widget = FieldWidget(field, AjaxSelectWidget(request))
+        widget.vocabulary = 'plone.app.vocabularies.Users'
+        return widget
+    component.provideAdapter(ContributorsFieldWidget)
+
 
 def default_keywords(self):
     return self.view.old_keywords[:]
@@ -143,28 +170,33 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             and isinstance(pssonvalues, list) and pssonvalues
             and isinstance(ssonvalues, list) and ssonvalues
         ):
-            if len(ssonvalues) > len(pssonvalues):
-                pssonvalues = ssonvalues
-            self.request.form.pop(psson, None)
-            self.request.form.update({sson: obs})
-        # coming from folder_contents with filters
-        if isinstance(pssonvalues, list) and pssonvalues:
-            for item in pssonvalues:
-                try:
-                    v = str(item)
-                    self.context.restrictedTraverse(v)
-                    obs.append(item)
-                except:
-                    pass
-        # coming from other cases
-        elif sson in self.request.form:
-            for item in self.request.form[sson]:
-                try:
-                    v = str(item)
-                    self.context.restrictedTraverse(v)
-                    obs.append(item)
-                except:
-                    pass
+            if isinstance(pssonvalues, list) and pssonvalues:
+                for item in pssonvalues:
+                    try:
+                        v = str(item)
+                        self.context.restrictedTraverse(v)
+                        obs.append(item)
+                    except:
+                        pass
+        else:
+            # coming from folder_contents with filters
+            if isinstance(pssonvalues, list) and pssonvalues:
+                for item in pssonvalues:
+                    try:
+                        v = str(item)
+                        self.context.restrictedTraverse(v)
+                        obs.append(item)
+                    except:
+                        pass
+            # coming from other cases
+            elif sson in self.request.form:
+                for item in self.request.form[sson]:
+                    try:
+                        v = str(item)
+                        self.context.restrictedTraverse(v)
+                        obs.append(item)
+                    except:
+                        pass
         ret = super(MassChangeForm, self).update()
         if obs:
             if HAS_W:
@@ -199,9 +231,34 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                  if i not in keywords]
         keywords.sort()
         self.logs, ilogs = [], []
+        ctbrs = data['contributors']
+        if isinstance(ctbrs, basestring):
+            ctbrs = [a.strip() for a in ctbrs.splitlines() if a.strip()]
+        if isinstance(ctbrs, (list, tuple)):
+            ctbrs = [a for a in ctbrs if a.strip()]
+
+        rights = data['rights']
+        if isinstance(rights, basestring) and rights.strip():
+            rights = rights.strip()
+        else:
+            rights = None
+        if isinstance(ctbrs, (list, tuple)):
+            ctbrs = [a for a in ctbrs if a.strip()]
         for item in data['selected_obj_paths']:
-            ppath = '/'.join(item.getPhysicalPath())
             changed = False
+            if ctbrs or rights:
+                try:
+                    ownership = IOwnership(item)
+                    if rights:
+                        ownership.rights = rights
+                        changed = True
+                    if ctbrs:
+                        ownership.contributors = tuple(ctbrs)
+                        changed = True
+                except:
+                    # does not handle for now AT based content
+                    pass
+            ppath = '/'.join(item.getPhysicalPath())
             if data['related_obj_paths']:
                 # item support related items
                 related = []
