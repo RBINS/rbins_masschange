@@ -255,9 +255,23 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     if ctbrs:
                         ownership.contributors = tuple(ctbrs)
                         changed = True
-                except:
+                except (TypeError,) as exc:
                     # does not handle for now AT based content
-                    pass
+                    if ctbrs:
+                        # try at
+                        try:
+                            item.Contributors
+                            item.setContributors(tuple(ctbrs))
+                            changed = True
+                        except AttributeError:
+                            pass
+                    if rights:
+                        try:
+                            item.Rights
+                            item.setRights(rights)
+                            changed = True
+                        except AttributeError:
+                            pass
             ppath = '/'.join(item.getPhysicalPath())
             if data['related_obj_paths']:
                 # item support related items
