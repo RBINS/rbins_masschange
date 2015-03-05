@@ -106,6 +106,12 @@ class IMassChangeSchema(interface.Interface):
                 title=u"Link with those objects",
                 vocabulary="plone.app.vocabularies.Catalog"))
 
+    overwrite = zope.schema.Bool(
+        title=u"Overwrite",
+        required=False,
+        default=True,
+        description=u"Overwrite values")
+
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
         required=False,
@@ -231,6 +237,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                  if i not in keywords]
         keywords.sort()
         self.logs, ilogs = [], []
+
         ctbrs = data['contributors']
         if isinstance(ctbrs, basestring):
             ctbrs = [a.strip() for a in ctbrs.splitlines() if a.strip()]
@@ -242,8 +249,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             rights = rights.strip()
         else:
             rights = None
-        if isinstance(ctbrs, (list, tuple)):
-            ctbrs = [a for a in ctbrs if a.strip()]
+
+        overwrite = data['overwrite']
         for item in data['selected_obj_paths']:
             changed = False
             if ctbrs or rights:
@@ -253,6 +260,10 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         ownership.rights = rights
                         changed = True
                     if ctbrs:
+                        if ownership.contributors and not overwrite:
+                            for i in ownership.contributors:
+                                if i not in ctbrs:
+                                    ctbrs.insert(0, i)
                         ownership.contributors = tuple(ctbrs)
                         changed = True
                 except (TypeError,) as exc:
@@ -260,7 +271,10 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     if ctbrs:
                         # try at
                         try:
-                            item.Contributors
+                            if item.Contributors and not overwrite:
+                                for i in item.Contributors:
+                                    if i not in ctbrs:
+                                        ctbrs.insert(0, i)
                             item.setContributors(tuple(ctbrs))
                             changed = True
                         except AttributeError:
@@ -319,9 +333,17 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             if keywords != oldk:
                 try:
                     try:
+                        if item.Subject() and not overwrite:
+                            for val in item.Subject():
+                                if val not in keywords:
+                                    keywords.insert(0, val)
                         item.setSubject(keywords)
                         changed = True
                     except AttributeError:
+                        if item.subject and not overwrite:
+                            for val in item.subject:
+                                if val not in keywords:
+                                    keywords.insert(0, val)
                         item.subject = keywords
                         changed = True
                 except Exception:
