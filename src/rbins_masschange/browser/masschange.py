@@ -26,6 +26,8 @@ import plone.app.z3cform
 import plone.z3cform.templates
 from z3c.form.interfaces import ActionExecutionError, WidgetActionExecutionError
 from plone.app.dexterity.behaviors.metadata import IOwnership
+from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
+from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
 from plone.autoform.form import AutoExtensibleForm
 from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
 from collective.z3cform.keywordwidget.widget import (
@@ -37,6 +39,7 @@ from collective.z3cform.keywordwidget.field import Keywords
 from z3c.relationfield.schema import RelationList, Relation, RelationChoice
 
 from plone.autoform import directives
+from z3c.form.browser.radio import RadioFieldWidget
 from zope.i18nmessageid import MessageFactory
 from z3c.form.interfaces import IFormLayer
 
@@ -112,6 +115,20 @@ class IMassChangeSchema(interface.Interface):
         default=True,
         description=u"Overwrite values")
 
+    directives.widget(exclude_from_nav=RadioFieldWidget)
+    directives.widget(allow_discussion=RadioFieldWidget)
+    exclude_from_nav = zope.schema.Bool(
+        title=u"Exclude from naviguation",
+        required=False,
+        default=None,
+        description=u"Exclude from naviguation")
+
+    allow_discussion = zope.schema.Bool(
+        title=u"Allow comments",
+        required=False,
+        default=None,
+        description=u"Allow comments")
+
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
         required=False,
@@ -172,9 +189,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         tp = self.request.form.get('orig_template', '')
         # coming from folder_contents with filters and collections
         if (
-            tp in ['folder_contents']
-            and isinstance(pssonvalues, list) and pssonvalues
-            and isinstance(ssonvalues, list) and ssonvalues
+            tp in ['folder_contents'] and
+            isinstance(pssonvalues, list) and pssonvalues and
+            isinstance(ssonvalues, list) and ssonvalues
         ):
             if isinstance(pssonvalues, list) and pssonvalues:
                 for item in pssonvalues:
@@ -251,8 +268,36 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             rights = None
 
         overwrite = data['overwrite']
+        exclude_from_nav = data['exclude_from_nav']
+        allow_discussion = data['allow_discussion']
         for item in data['selected_obj_paths']:
             changed = False
+            if allow_discussion is not None:
+                try:
+                    ifc = IAllowDiscussion(item)
+                    ifc.allow_discussion = allow_discussion
+                    changed = True
+                except (TypeError,) as exc:
+                    # does not handle for now AT based content
+                    # try at
+                    try:
+                        item.editIsDiscussable(allow_discussion)
+                        changed = True
+                    except AttributeError:
+                        pass
+            if exclude_from_nav is not None:
+                try:
+                    ifc = IExcludeFromNavigation(item)
+                    ifc.exclude_from_nav = exclude_from_nav
+                    changed = True
+                except (TypeError,) as exc:
+                    # does not handle for now AT based content
+                    # try at
+                    try:
+                        item.setExcludeFromNav(exclude_from_nav)
+                        changed = True
+                    except AttributeError:
+                        pass
             if ctbrs or rights:
                 try:
                     ownership = IOwnership(item)
