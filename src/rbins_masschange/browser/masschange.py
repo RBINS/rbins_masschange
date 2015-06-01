@@ -281,8 +281,20 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     # does not handle for now AT based content
                     # try at
                     try:
-                        item.editIsDiscussable(allow_discussion)
-                        changed = True
+                        done = False
+                        try:
+                            item.allowDiscussion(allow_discussion)
+                            done = True
+                        except Exception:
+                            pass
+                        try:
+                            item.editIsDiscussable(allow_discussion)
+                            done = True
+                        except Exception:
+                            pass
+                        if done:
+                            item.reindexObject()
+                            changed = True
                     except AttributeError:
                         pass
             if exclude_from_nav is not None:
@@ -295,6 +307,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     # try at
                     try:
                         item.setExcludeFromNav(exclude_from_nav)
+                        item.reindexObject()
                         changed = True
                     except AttributeError:
                         pass
