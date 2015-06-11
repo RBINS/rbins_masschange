@@ -10,5 +10,6 @@
       name="rbins_masschange_form"
       class=".masschange.masschange_form_frame"
       permission="rbins.masschange" />
+ <browser:resourceDirectory name="rbins_masschange" directory="skin" />
 <!-- vim:set ft=xml: -->
 </configure>

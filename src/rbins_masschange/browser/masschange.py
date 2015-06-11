@@ -71,7 +71,13 @@ output_type_vocab = SimpleVocabulary(
 
 class IMassChangeSchema(interface.Interface):
     """Define masschange form fields"""
-    #directives.widget('local_keywords', InAndOutKeywordWidget)
+    # directives.widget('local_keywords', InAndOutKeywordWidget)
+
+    overwrite = zope.schema.Bool(
+        title=u"Overwrite",
+        required=False,
+        default=False,
+        description=u"Overwrite values")
 
     if not HAS_W:
         selected_obj_paths = RelationList(
@@ -81,6 +87,11 @@ class IMassChangeSchema(interface.Interface):
             value_type=RelationChoice(
                 title=u"Related",
                 source=ObjPathSourceBinder()))
+
+        handle_related = zope.schema.Bool(
+            title=u"Handle related items",
+            required=False,
+            default=False)
 
         related_obj_paths = RelationList(
             title=u"Objects to link with",
@@ -101,6 +112,11 @@ class IMassChangeSchema(interface.Interface):
                 title=u"Related",
                 vocabulary="plone.app.vocabularies.Catalog"))
 
+        handle_related = zope.schema.Bool(
+            title=u"Handle related items",
+            required=False,
+            default=False)
+
         related_obj_paths = RelationList(
             title=u"Objects to link with",
             required=False,
@@ -108,12 +124,6 @@ class IMassChangeSchema(interface.Interface):
             value_type=RelationChoice(
                 title=u"Link with those objects",
                 vocabulary="plone.app.vocabularies.Catalog"))
-
-    overwrite = zope.schema.Bool(
-        title=u"Overwrite",
-        required=False,
-        default=True,
-        description=u"Overwrite values")
 
     directives.widget(exclude_from_nav=RadioFieldWidget)
     directives.widget(allow_discussion=RadioFieldWidget)
@@ -128,6 +138,11 @@ class IMassChangeSchema(interface.Interface):
         required=False,
         default=None,
         description=u"Allow comments")
+
+    handle_keywords = zope.schema.Bool(
+        title=u"Handle keywords",
+        required=False,
+        default=False)
 
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
@@ -146,10 +161,20 @@ class IMassChangeSchema(interface.Interface):
         title=u"Keywords to add", required=False,
         value_type=(zope.schema.TextLine()))
 
+    handle_contributors = zope.schema.Bool(
+        title=u"Handle contributors",
+        required=False,
+        default=False)
+
     contributors = zope.schema.Text(
         title=u"contributors",
         description=u"Contributors (one per line)",
         required=False)
+
+    handle_rights = zope.schema.Bool(
+        title=u"Handle rights",
+        required=False,
+        default=False)
 
     rights = zope.schema.Text(
         title=u"rights",
@@ -311,13 +336,14 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         changed = True
                     except AttributeError:
                         pass
-            if ctbrs or rights:
+            if (ctbrs or rights) and (data['handle_rights'] or
+                                      data['handle_contributors']):
                 try:
                     ownership = IOwnership(item)
-                    if rights:
+                    if rights and data['handle_rights']:
                         ownership.rights = rights
                         changed = True
-                    if ctbrs:
+                    if ctbrs and data['handle_contributors']:
                         if ownership.contributors and not overwrite:
                             for i in ownership.contributors:
                                 if i not in ctbrs:
@@ -326,7 +352,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         changed = True
                 except (TypeError,) as exc:
                     # does not handle for now AT based content
-                    if ctbrs:
+                    if ctbrs and data['handle_contributors']:
                         # try at
                         try:
                             if item.Contributors and not overwrite:
@@ -337,7 +363,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                             changed = True
                         except AttributeError:
                             pass
-                    if rights:
+                    if rights and data['handle_rights']:
                         try:
                             item.Rights
                             item.setRights(rights)
@@ -345,7 +371,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         except AttributeError:
                             pass
             ppath = '/'.join(item.getPhysicalPath())
-            if data['related_obj_paths']:
+            if data['related_obj_paths'] and data['handle_related']:
                 # item support related items
                 related = []
                 # archetypes
@@ -388,7 +414,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             except:
                 oldk = []
             oldk.sort()
-            if keywords != oldk:
+            if (keywords != oldk) and data['handle_keywords']:
                 try:
                     try:
                         if item.Subject() and not overwrite:
