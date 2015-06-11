@@ -6,6 +6,8 @@ body.template-rbins_masschange_form form #formfield-form-widgets-handle_keywords
 body.template-rbins_masschange_form form #formfield-form-widgets-handle_contributors,
 body.template-rbins_masschange_form form #formfield-form-widgets-handle_rights,
 body.template-rbins_masschange_form form #formfield-form-widgets-rights,
+body.template-rbins_masschange_form form #formfield-form-widgets-related_obj_paths div,
+body.template-rbins_masschange_form form #formfield-form-widgets-selected_obj_paths div,
 body.template-rbins_masschange_form form #formfield-form-widgets-handle_related {
 padding-bottom: 0px;
 border-bottom: none}
