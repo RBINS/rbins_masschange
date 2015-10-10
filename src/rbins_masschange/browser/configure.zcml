@@ -11,5 +11,6 @@
       class=".masschange.masschange_form_frame"
       permission="rbins.masschange" />
  <browser:resourceDirectory name="rbins_masschange" directory="skin" />
+ <adapter factory=".masschange.ContributorsFieldWidget"/>
 <!-- vim:set ft=xml: -->
 </configure>

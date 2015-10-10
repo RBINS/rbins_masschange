@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-__docformat__ = 'restructuredtext en'
 import traceback
 from plone.uuid.interfaces import IUUID
 from Products.CMFCore.utils import getToolByName
@@ -44,6 +43,9 @@ from zope.i18nmessageid import MessageFactory
 from z3c.form.interfaces import IFormLayer
 
 
+from plone.app.z3cform.interfaces import IPloneFormLayer
+from z3c.form.browser import textarea
+
 try:
     from plone.app.widgets.interfaces import IWidgetsLayer
     from plone.app.widgets.dx import (RelatedItemsFieldWidget,
@@ -67,6 +69,13 @@ def make_terms(items):
 output_type_vocab = SimpleVocabulary(
     make_terms([("list", "Patient list"),
                 ("summary", "Summary")]))
+
+
+@adapter(getSpecification(IOwnership['contributors']), IFormLayer)
+@implementer(IFieldWidget)
+def ContributorsFieldWidget(field, request):
+    widget = FieldWidget(field, textarea.TextAreaWidget(field, request))
+    return widget
 
 
 class IMassChangeSchema(interface.Interface):
@@ -181,14 +190,14 @@ class IMassChangeSchema(interface.Interface):
         description=u"Rights",
         required=False)
 
-if HAS_W:
-    @adapter(getSpecification(IMassChangeSchema['contributors']), IFormLayer)
-    @implementer(IFieldWidget)
-    def ContributorsFieldWidget(field, request):
-        widget = FieldWidget(field, AjaxSelectWidget(request))
-        widget.vocabulary = 'plone.app.vocabularies.Users'
-        return widget
-    component.provideAdapter(ContributorsFieldWidget)
+#if HAS_W:
+#    @adapter(getSpecification(IMassChangeSchema['contributors']), IFormLayer)
+#    @implementer(IFieldWidget)
+#    def ContributorsFieldWidget(field, request):
+#        widget = FieldWidget(field, AjaxSelectWidget(request))
+#        widget.vocabulary = 'plone.app.vocabularies.Users'
+#        return widget
+#    component.provideAdapter(ContributorsFieldWidget)
 
 
 def default_keywords(self):

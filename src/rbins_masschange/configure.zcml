@@ -23,5 +23,16 @@
     for="Products.CMFPlone.interfaces.IPloneSiteRoot"
     provides="Products.GenericSetup.interfaces.EXTENSION"
     />
+  <genericsetup:importStep
+    name="rbins_masschange setupVarious"
+    title="various setup for rbins_masschange "
+    description="description"
+    handler="rbins_masschange.setuphandlers.setupVarious">
+    <depends name="content"/>
+  </genericsetup:importStep>
+  <adapter name="Contributors" factory=".catalog.AContributors" />
+  <adapter name="Contributors" factory=".catalog.BContributors" />
+  <adapter name="ZContributors" factory=".catalog.AZContributors" />
+  <adapter name="ZContributors" factory=".catalog.BZContributors" />
   <!-- vim:set ft=xml: -->
 </configure>
