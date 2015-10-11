@@ -32,7 +32,7 @@ BContributors = indexer(IDexterityItem)(_Contributors)
 
 
 def _ZContributors(item):
-    return " ".join(_Contributors(item))
+    return " ".join(_Contributors(item)).split()
 
 
 AZContributors = indexer(IBaseContent)(_ZContributors)
