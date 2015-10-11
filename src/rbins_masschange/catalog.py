@@ -21,7 +21,7 @@ def _Contributors(item):
         ctbtrs = ownership.contributors
     except TypeError:
         try:
-            ctbtrs = item.Contributors
+            ctbtrs = item.Contributors()
         except AttributeError:
             ctbtrs = []
     return [magicstring(a) for a in ctbtrs]
