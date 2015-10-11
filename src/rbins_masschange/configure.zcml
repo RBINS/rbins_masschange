@@ -14,6 +14,10 @@
     component=".vocabulary.LocalSubjectsVocabulary"
     name="rbins_masschange.localKeywords"
     />
+ <utility
+    component=".vocabulary.ContributorsVocabulary"
+    name="rbins_masschange.contributors"
+    />
   <five:registerPackage package="." initialize=".initialize" />
   <genericsetup:registerProfile
     name="default"
