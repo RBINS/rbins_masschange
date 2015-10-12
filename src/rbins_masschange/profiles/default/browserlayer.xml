@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<layers>
+  <layer name="rbins_masschange" interface="rbins_masschange.interfaces.ILayer"/>
+</layers>

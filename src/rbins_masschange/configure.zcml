@@ -14,7 +14,7 @@
     component=".vocabulary.LocalSubjectsVocabulary"
     name="rbins_masschange.localKeywords"
     />
- <utility
+  <utility
     component=".vocabulary.ContributorsVocabulary"
     name="rbins_masschange.contributors"
     />
@@ -38,5 +38,13 @@
   <adapter name="Contributors" factory=".catalog.BContributors" />
   <adapter name="ZContributors" factory=".catalog.AZContributors" />
   <adapter name="ZContributors" factory=".catalog.BZContributors" />
+  <!--
+  <browser:page
+    for="eea.facetednavigation.interfaces.IFacetedNavigable"
+    name="faceted_query"
+    class=".catalog.CFacetedQueryHandler"
+    permission="zope2.View"
+    layer="rbins_masschange.interfaces.ILayer"/>
+  -->
   <!-- vim:set ft=xml: -->
 </configure>
