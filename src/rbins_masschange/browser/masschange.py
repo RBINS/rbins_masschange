@@ -44,7 +44,7 @@ from z3c.form.interfaces import IFormLayer
 
 
 from plone.app.z3cform.interfaces import IPloneFormLayer
-from z3c.form.browser import textarea
+from z3c.form.browser import textarea, textlines
 
 try:
     from plone.app.widgets.interfaces import IWidgetsLayer
@@ -74,7 +74,8 @@ output_type_vocab = SimpleVocabulary(
 @adapter(getSpecification(IOwnership['contributors']), IFormLayer)
 @implementer(IFieldWidget)
 def ContributorsFieldWidget(field, request):
-    widget = FieldWidget(field, textarea.TextAreaWidget(field, request))
+    widget = textlines.TextLinesFieldWidget(field, request)
+    #widget = textarea.TextAreaFieldWidget(field, request)
     return widget
 
 
