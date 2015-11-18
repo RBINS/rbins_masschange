@@ -10,7 +10,6 @@ import copy
 from zope.component import adapts
 from zope.interface import implements
 from plone.indexer import indexer
-from plone.dexterity.interfaces import IDexterityItem
 from plone.app.dexterity.behaviors.metadata import IOwnership
 
 from Products.Archetypes.interfaces.base import IBaseContent
@@ -18,6 +17,7 @@ from collective import dexteritytextindexer
 from rbins_masschange.utils import magicstring
 from eea.facetednavigation.browser.app.query import FacetedQueryHandler
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
+from plone.dexterity.interfaces import IDexterityContent
 
 
 
@@ -34,7 +34,20 @@ def _Contributors(item):
 
 
 AContributors = indexer(IBaseContent)(_Contributors)
-BContributors = indexer(IDexterityItem)(_Contributors)
+BContributors = indexer(IDexterityContent)(_Contributors)
+
+
+def _OpenClose(item):
+    for propname in ['status', 'statut']:
+        prop = getattr(item, propname, None)
+        if not isinstance(prop, basestring):
+            continue
+        for k, val in ('open', 'open'), ('close', 'closed'):
+            if prop.lower().startswith(k):
+                return val
+
+
+OpenClose = indexer(IDexterityContent)(_OpenClose)
 
 
 def _ZContributors(item):
@@ -42,7 +55,7 @@ def _ZContributors(item):
 
 
 AZContributors = indexer(IBaseContent)(_ZContributors)
-BZContributors = indexer(IDexterityItem)(_ZContributors)
+BZContributors = indexer(IDexterityContent)(_ZContributors)
 
 
 #class CFacetedQueryHandler(FacetedQueryHandler):

@@ -27,6 +27,7 @@ def setupVarious(context):
     for k, tp, extra in [
         ('ZContributors', 'ZCTextIndex', Extra),
         ('Contributors',  'KeywordIndex', None),
+        ('OpenClose',  'FieldIndex', None),
     ]:
         if k not in catalog.Indexes:
             l.error('Creating %s in catalog' % k)
@@ -36,7 +37,7 @@ def setupVarious(context):
 
     columns = catalog._catalog.schema
     reindex = True
-    for k in ('ZContributors', 'Contributors', ):
+    for k in ('ZContributors', 'Contributors', 'OpenClose'):
         if k not in columns:
             l.warn('Creating %s in catalog' % k)
             catalog.addColumn(k)

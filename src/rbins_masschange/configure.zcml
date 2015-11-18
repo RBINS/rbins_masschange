@@ -34,6 +34,7 @@
     handler="rbins_masschange.setuphandlers.setupVarious">
     <depends name="content"/>
   </genericsetup:importStep>
+  <adapter name="OpenClose" factory=".catalog.OpenClose" />
   <adapter name="Contributors" factory=".catalog.AContributors" />
   <adapter name="Contributors" factory=".catalog.BContributors" />
   <adapter name="ZContributors" factory=".catalog.AZContributors" />
