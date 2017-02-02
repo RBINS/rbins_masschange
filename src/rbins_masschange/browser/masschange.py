@@ -18,6 +18,7 @@ from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
 from plone.app.dexterity.behaviors.metadata import IOwnership
 from plone.app.iterate.interfaces import ConflictError
 from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
+from plone.app.textfield.value import RichTextValue
 from plone.autoform import directives
 from plone.autoform.form import AutoExtensibleForm
 from plone.formwidget.masterselect import MasterSelectBoolField
@@ -343,10 +344,19 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         at_field.getMutator(item)(new)
                         changed = True
                 elif base_hasattr(item, 'text'):
-                    current = item.text
+                    if isinstance(item.text, RichTextValue):
+                        current = item.text.raw
+                    else:
+                        current = item.text
+
                     new = get_new_value(current)
                     if current != new:
-                        item.text = new
+                        if isinstance(item.text, RichTextValue):
+                            rtv = item.text
+                            rtv._raw_holder.value = new
+                            item.text = rtv
+                        else:
+                            item.text = new
                         changed = True
 
         if changed:
