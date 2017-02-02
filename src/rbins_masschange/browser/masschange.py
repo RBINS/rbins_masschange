@@ -16,6 +16,7 @@ from plone.app.iterate.interfaces import ConflictError
 from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
 from plone.autoform import directives
 from plone.autoform.form import AutoExtensibleForm
+from plone.formwidget.masterselect import MasterSelectBoolField
 from plone.uuid.interfaces import IUUID
 from z3c.form.browser import textlines
 from z3c.form.browser.radio import RadioFieldWidget
@@ -63,7 +64,6 @@ output_type_vocab = SimpleVocabulary(
 @implementer(IFieldWidget)
 def ContributorsFieldWidget(field, request):
     widget = textlines.TextLinesFieldWidget(field, request)
-    # widget = textarea.TextAreaFieldWidget(field, request)
     return widget
 
 
@@ -72,24 +72,32 @@ class IMassChangeSchema(interface.Interface):
     # directives.widget('local_keywords', InAndOutKeywordWidget)
 
     overwrite = zope.schema.Bool(
-        title=u"Overwrite",
+        title=u"Overwrite keywords and contributors",
         required=False,
         default=False,
-        description=u"Overwrite values")
+        description=u"When not selected, you add keywords and contributor to existing ones. When selected, you remove existing values.")
 
     if not HAS_W:
         selected_obj_paths = RelationList(
-            title=u"Objects to change tags",
+            title=u"Objects to change",
             required=True,
             default=[],
             value_type=RelationChoice(
                 title=u"Related",
                 source=ObjPathSourceBinder()))
 
-        handle_related = zope.schema.Bool(
+        handle_related = MasterSelectBoolField(
             title=u"Handle related items",
             required=False,
-            default=False)
+            default=False,
+            slave_fields=[{
+                'name': 'related_obj_paths',
+                'action': 'show',
+                'hide_values': True,
+                'masterSelector': '#form-widgets-handle_related-0',
+                'slaveID': '#formfield-form-widgets-related_obj_paths',
+            }]
+        )
 
         related_obj_paths = RelationList(
             title=u"Objects to link with",
@@ -110,10 +118,17 @@ class IMassChangeSchema(interface.Interface):
                 title=u"Related",
                 vocabulary="plone.app.vocabularies.Catalog"))
 
-        handle_related = zope.schema.Bool(
+        handle_related = MasterSelectBoolField(
             title=u"Handle related items",
             required=False,
-            default=False)
+            default=False,
+            slave_fields=[{
+                'name': 'related_obj_paths',
+                'action': 'show',
+                'hide_values': True,
+                'masterSelector': '#form-widgets-handle_related-0',
+                'slaveID': '#formfield-form-widgets-related_obj_paths',
+            }])
 
         related_obj_paths = RelationList(
             title=u"Objects to link with",
@@ -137,10 +152,30 @@ class IMassChangeSchema(interface.Interface):
         default=None,
         description=u"Allow comments")
 
-    handle_keywords = zope.schema.Bool(
+    handle_keywords = MasterSelectBoolField(
         title=u"Handle keywords",
         required=False,
-        default=False)
+        default=False,
+        slave_fields=[{
+            'name': 'local_keywords',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_keywords-0',
+            'slaveID': '#formfield-form-widgets-local_keywords',
+        }, {
+            'name': 'keywords',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_keywords-0',
+            'slaveID': '#formfield-form-widgets-keywords',
+        }, {
+            'name': 'manual_keywords',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_keywords-0',
+            'slaveID': '#formfield-form-widgets-manual_keywords',
+        }]
+    )
 
     local_keywords = zope.schema.List(
         title=u"Keywords from this folder",
@@ -159,21 +194,36 @@ class IMassChangeSchema(interface.Interface):
         title=u"Keywords to add", required=False,
         value_type=(zope.schema.TextLine()))
 
-    handle_contributors = zope.schema.Bool(
+    handle_contributors = MasterSelectBoolField(
         title=u"Handle contributors",
         required=False,
-        default=False)
+        default=False,
+        slave_fields=[{
+            'name': 'contributors',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_contributors-0',
+            'slaveID': '#formfield-form-widgets-contributors',
+        }]
+    )
 
     contributors = zope.schema.Text(
         title=u"contributors",
         description=u"Contributors (one per line)",
         required=False)
 
-    handle_rights = zope.schema.Bool(
+    handle_rights = MasterSelectBoolField(
         title=u"Handle rights",
         required=False,
-        default=False)
-
+        default=False,
+        slave_fields=[{
+            'name': 'rights',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_rights-0',
+            'slaveID': '#formfield-form-widgets-rights',
+        }]
+    )
     rights = zope.schema.Text(
         title=u"rights",
         description=u"Rights",
@@ -265,6 +315,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
     @z3c.form.button.buttonAndHandler(_(u'Make Changes'), name='masschange')
     def masschange(self, action):
         # already passed (updateWidget called twice
+        self.logs, ilogs = [], []
         if self.status != '':
             return
         data, errors = self.extractData()
@@ -275,11 +326,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         for k in 'keywords', 'local_keywords', 'manual_keywords':
             d = data.get(k, None)
             if d:
-                [keywords.append(i)
-                 for i in d
-                 if i not in keywords]
+                [keywords.append(i) for i in d if i not in keywords]
         keywords.sort()
-        self.logs, ilogs = [], []
 
         ctbrs = data['contributors']
         if isinstance(ctbrs, basestring):
@@ -341,8 +389,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         changed = True
                     except AttributeError:
                         pass
-            if (ctbrs or rights) and (data['handle_rights'] or
-                                          data['handle_contributors']):
+            if (ctbrs or rights) and (data['handle_rights'] or data['handle_contributors']):
                 try:
                     ownership = IOwnership(item)
                     if rights and data['handle_rights']:

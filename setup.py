@@ -32,6 +32,7 @@ setup(name='rbins_masschange',
           "chardet",
           "collective.z3cform.keywordwidget",
           "plone.formwidget.contenttree",
+          "plone.formwidget.masterselect"
       ] ,
       entry_points = {
           'z3c.autoinclude.plugin': [

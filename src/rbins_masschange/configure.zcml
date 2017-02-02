@@ -8,6 +8,7 @@
   xmlns:monkey="http://namespaces.plone.org/monkey"
   xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
   i18n_domain="rbins_masschange">
+  <include package="plone.formwidget.masterselect" />
   <include package=".browser" />
   <include package="rbins_masschange" file="permissions.zcml"/>
   <utility
