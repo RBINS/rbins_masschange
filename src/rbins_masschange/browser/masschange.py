@@ -1,56 +1,42 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import logging
 import traceback
-from plone.uuid.interfaces import IUUID
-from Products.CMFCore.utils import getToolByName
+
+import plone.z3cform.templates
+import z3c.form
 import zope.schema
+from Products.CMFCore.utils import getToolByName
+from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
+from collective.z3cform.keywordwidget.field import Keywords
+from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
+from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
+from plone.app.dexterity.behaviors.metadata import IOwnership
+from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
+from plone.autoform import directives
+from plone.autoform.form import AutoExtensibleForm
+from plone.uuid.interfaces import IUUID
+from z3c.form.browser import textlines
+from z3c.form.browser.radio import RadioFieldWidget
+from z3c.form.interfaces import IFieldWidget
+from z3c.form.interfaces import IFormLayer
+from z3c.form.util import getSpecification
+from z3c.relationfield import RelationValue
+from z3c.relationfield.schema import RelationList, RelationChoice
 from zope import component, interface
 from zope.component import adapter
+from zope.i18nmessageid import MessageFactory
 from zope.interface import implementer
 from zope.intid.interfaces import IIntIds
-from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
-import logging
-
-from zope.schema.vocabulary import SimpleVocabulary
 from zope.schema.vocabulary import SimpleTerm
-
-import z3c.form
-from z3c.form.util import getSpecification
-from z3c.form.widget import FieldWidget
-from z3c.relationfield import RelationValue
-from z3c.form.interfaces import IFieldWidget
-
-from zope.interface import invariant, Invalid
-import plone.app.z3cform
-import plone.z3cform.templates
-from z3c.form.interfaces import ActionExecutionError, WidgetActionExecutionError
-from plone.app.dexterity.behaviors.metadata import IOwnership
-from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
-from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
-from plone.autoform.form import AutoExtensibleForm
-from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
-from collective.z3cform.keywordwidget.widget import (
-    KeywordFieldWidget,
-    InAndOutKeywordFieldWidget,
-    InAndOutKeywordWidget)
-from collective.z3cform.keywordwidget.field import Keywords
-
-from z3c.relationfield.schema import RelationList, Relation, RelationChoice
-
-from plone.autoform import directives
-from z3c.form.browser.radio import RadioFieldWidget
-from zope.i18nmessageid import MessageFactory
-from z3c.form.interfaces import IFormLayer
-
-
-from plone.app.z3cform.interfaces import IPloneFormLayer
-from z3c.form.browser import textarea, textlines
+from zope.schema.vocabulary import SimpleVocabulary
 
 try:
     from plone.app.widgets.interfaces import IWidgetsLayer
     from plone.app.widgets.dx import (RelatedItemsFieldWidget,
                                       AjaxSelectWidget,
                                       RelatedItemsWidget)
+
     HAS_W = True
 except ImportError:
     HAS_W = False
@@ -58,6 +44,7 @@ except ImportError:
 
 _ = MessageFactory('rbins_masschange')
 logger = logging.getLogger('rbins_masschange.masschange')
+
 
 def make_terms(items):
     """ Create zope.schema terms for vocab from tuples """
@@ -75,7 +62,7 @@ output_type_vocab = SimpleVocabulary(
 @implementer(IFieldWidget)
 def ContributorsFieldWidget(field, request):
     widget = textlines.TextLinesFieldWidget(field, request)
-    #widget = textarea.TextAreaFieldWidget(field, request)
+    # widget = textarea.TextAreaFieldWidget(field, request)
     return widget
 
 
@@ -191,15 +178,6 @@ class IMassChangeSchema(interface.Interface):
         description=u"Rights",
         required=False)
 
-#if HAS_W:
-#    @adapter(getSpecification(IMassChangeSchema['contributors']), IFormLayer)
-#    @implementer(IFieldWidget)
-#    def ContributorsFieldWidget(field, request):
-#        widget = FieldWidget(field, AjaxSelectWidget(request))
-#        widget.vocabulary = 'plone.app.vocabularies.Users'
-#        return widget
-#    component.provideAdapter(ContributorsFieldWidget)
-
 
 def default_keywords(self):
     return self.view.old_keywords[:]
@@ -209,6 +187,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
     """ A form to output a HTML masschange from chosen parameters """
     schema = IMassChangeSchema
     ignoreContext = True
+    old_keywords = None
+    status = ""
+    logs = None
 
     def update(self):
         self.old_keywords = []
@@ -224,9 +205,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         tp = self.request.form.get('orig_template', '')
         # coming from folder_contents with filters and collections
         if (
-            tp in ['folder_contents'] and
-            isinstance(pssonvalues, list) and pssonvalues and
-            isinstance(ssonvalues, list) and ssonvalues
+                                    tp in ['folder_contents'] and
+                                isinstance(pssonvalues, list) and pssonvalues and
+                        isinstance(ssonvalues, list) and ssonvalues
         ):
             if isinstance(pssonvalues, list) and pssonvalues:
                 for item in pssonvalues:
@@ -347,7 +328,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     except AttributeError:
                         pass
             if (ctbrs or rights) and (data['handle_rights'] or
-                                      data['handle_contributors']):
+                                          data['handle_contributors']):
                 try:
                     ownership = IOwnership(item)
                     if rights and data['handle_rights']:
@@ -410,9 +391,6 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                                 BIRelatedItems(item).relatedItems = (
                                     [RelationValue(intids.getId(obj))
                                      for obj in (related + xxx)])
-                                #BIRelatedItems(item).relatedItems = (
-                                #    [RelationValue(IUUID(obj))
-                                #     for obj in (related + xxx)])
                                 changed = True
                             return changed
                     except Exception:
@@ -444,7 +422,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     trace = traceback.format_exc()
                     msg = ('<li>%s %s: cant change keywords '
                            '<br/><pre>%s</pre>\n</li>') % (
-                               ppath, keywords, trace)
+                              ppath, keywords, trace)
                     logger.error(msg)
                     ilogs.append(msg)
             if changed:
@@ -465,7 +443,6 @@ for k in ('keywords', 'local_keywords',):
             field=IMassChangeSchema[k],
             view=MassChangeForm),
         name="default")
-
 
 masschange_form_frame = plone.z3cform.layout.wrap_form(
     MassChangeForm,
