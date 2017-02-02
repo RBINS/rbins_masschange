@@ -1,52 +1,41 @@
 <?xml version="1.0"?>
 <configure
-  xmlns="http://namespaces.zope.org/zope"
-  xmlns:five="http://namespaces.zope.org/five"
-  xmlns:i18n="http://namespaces.zope.org/i18n"
-  xmlns:browser="http://namespaces.zope.org/browser"
-  xmlns:cmf="http://namespaces.zope.org/cmf"
-  xmlns:monkey="http://namespaces.plone.org/monkey"
-  xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
-  i18n_domain="rbins_masschange">
-  <include package="plone.formwidget.masterselect" />
-  <include package=".browser" />
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    i18n_domain="rbins_masschange">
+  <include package="plone.formwidget.contenttree"/>
+  <include package="plone.formwidget.masterselect"/>
+  <include package=".browser"/>
   <include package="rbins_masschange" file="permissions.zcml"/>
   <utility
-    component=".vocabulary.LocalSubjectsVocabulary"
-    name="rbins_masschange.localKeywords"
-    />
+      component=".vocabulary.LocalSubjectsVocabulary"
+      name="rbins_masschange.localKeywords"
+  />
   <utility
-    component=".vocabulary.ContributorsVocabulary"
-    name="rbins_masschange.contributors"
-    />
-  <five:registerPackage package="." initialize=".initialize" />
+      component=".vocabulary.ContributorsVocabulary"
+      name="rbins_masschange.contributors"
+  />
+  <five:registerPackage package="." initialize=".initialize"/>
   <genericsetup:registerProfile
-    name="default"
-    title="rbins_masschange"
-    description="rbins_masschange"
-    directory="profiles/default"
-    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
-    provides="Products.GenericSetup.interfaces.EXTENSION"
-    />
+      name="default"
+      title="rbins_masschange"
+      description="rbins_masschange"
+      directory="profiles/default"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+  />
   <genericsetup:importStep
-    name="rbins_masschange setupVarious"
-    title="various setup for rbins_masschange "
-    description="description"
-    handler="rbins_masschange.setuphandlers.setupVarious">
+      name="rbins_masschange setupVarious"
+      title="various setup for rbins_masschange "
+      description="description"
+      handler="rbins_masschange.setuphandlers.setupVarious">
     <depends name="content"/>
   </genericsetup:importStep>
-  <adapter name="OpenClose" factory=".catalog.OpenClose" />
-  <adapter name="Contributors" factory=".catalog.AContributors" />
-  <adapter name="Contributors" factory=".catalog.BContributors" />
-  <adapter name="ZContributors" factory=".catalog.AZContributors" />
-  <adapter name="ZContributors" factory=".catalog.BZContributors" />
-  <!--
-  <browser:page
-    for="eea.facetednavigation.interfaces.IFacetedNavigable"
-    name="faceted_query"
-    class=".catalog.CFacetedQueryHandler"
-    permission="zope2.View"
-    layer="rbins_masschange.interfaces.ILayer"/>
-  -->
+  <adapter name="OpenClose" factory=".catalog.OpenClose"/>
+  <adapter name="Contributors" factory=".catalog.AContributors"/>
+  <adapter name="Contributors" factory=".catalog.BContributors"/>
+  <adapter name="ZContributors" factory=".catalog.AZContributors"/>
+  <adapter name="ZContributors" factory=".catalog.BZContributors"/>
   <!-- vim:set ft=xml: -->
 </configure>
