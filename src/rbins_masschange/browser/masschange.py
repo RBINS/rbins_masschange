@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+import re
 import traceback
 
 import plone.z3cform.templates
 import z3c.form
 import zope.schema
+from Products.Archetypes.interfaces import IBaseContent
+from Products.CMFBibliographyAT.interface.content import IBibliographicItem
 from Products.CMFCore.utils import getToolByName
+from Products.CMFPlone.utils import base_hasattr
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
 from collective.z3cform.keywordwidget.field import Keywords
 from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
@@ -19,6 +23,7 @@ from plone.autoform.form import AutoExtensibleForm
 from plone.formwidget.masterselect import MasterSelectBoolField
 from plone.uuid.interfaces import IUUID
 from z3c.form.browser import textlines
+from z3c.form.browser.checkbox import CheckBoxFieldWidget
 from z3c.form.browser.radio import RadioFieldWidget
 from z3c.form.interfaces import IFieldWidget
 from z3c.form.interfaces import IFormLayer
@@ -48,23 +53,17 @@ _ = MessageFactory('rbins_masschange')
 logger = logging.getLogger('rbins_masschange.masschange')
 
 
-def make_terms(items):
-    """ Create zope.schema terms for vocab from tuples """
-    terms = [SimpleTerm(value=pair[0], token=pair[0], title=pair[1])
-             for pair in items]
-    return terms
-
-
-output_type_vocab = SimpleVocabulary(
-    make_terms([("list", "Patient list"),
-                ("summary", "Summary")]))
-
-
 @adapter(getSpecification(IOwnership['contributors']), IFormLayer)
 @implementer(IFieldWidget)
 def ContributorsFieldWidget(field, request):
     widget = textlines.TextLinesFieldWidget(field, request)
     return widget
+
+
+def make_vocabulary(*items):
+    terms = [SimpleTerm(value=value, token=value, title=label)
+             for value, label in items]
+    return SimpleVocabulary(terms)
 
 
 class IMassChangeSchema(interface.Interface):
@@ -229,6 +228,72 @@ class IMassChangeSchema(interface.Interface):
         description=u"Rights",
         required=False)
 
+    handle_text_replace = MasterSelectBoolField(
+        title=u"Replace text",
+        required=False,
+        default=False,
+        slave_fields=[{
+            'name': 'text_replace_fields',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_text_replace-0',
+            'slaveID': '#formfield-form-widgets-text_replace_fields',
+        }, {
+            'name': 'text_replace_mode',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_text_replace-0',
+            'slaveID': '#formfield-form-widgets-text_replace_mode',
+        }, {
+            'name': 'text_replace_source',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_text_replace-0',
+            'slaveID': '#formfield-form-widgets-text_replace_source',
+        }, {
+            'name': 'text_replace_destination',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_text_replace-0',
+            'slaveID': '#formfield-form-widgets-text_replace_destination',
+        }],
+    )
+
+    text_replace_fields = zope.schema.Tuple(
+        title=u"Fields to update",
+        required=False,
+        description=u"Select fields where you want to apply the text replace",
+        default=('text', 'pdf_url'),
+        value_type=zope.schema.Choice(
+            vocabulary=make_vocabulary(
+                (u'text', u"Text body (text)"),
+                (u'pdf_url', u"PDF URL (pdf_url)"), ),
+        ))
+    directives.widget(text_replace_fields=CheckBoxFieldWidget)
+
+    text_replace_mode = zope.schema.Choice(
+        title=u"Text replacement mode",
+        required=False,
+        description=u"Select fields where you want to apply the text replace",
+        default=u'plain',
+        vocabulary=make_vocabulary(
+            (u'plain', u"Replace plain text by another one"),
+            (u'regexp', u"Replace pattern using regular expression."),
+        )
+    )
+    directives.widget(text_replace_mode=RadioFieldWidget)
+
+    text_replace_source = zope.schema.TextLine(
+        title=u"Text / pattern to replace",
+        required=False,
+    )
+
+    text_replace_destination = zope.schema.TextLine(
+        title=u"Replacement text / pattern",
+        required=False,
+        description=u"In regular expression mode, you can use \1, \2, etc. here to get pattern groups",
+    )
+
 
 def default_keywords(self):
     return self.view.old_keywords[:]
@@ -241,6 +306,53 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
     old_keywords = None
     status = ""
     logs = None
+
+    def replace_text(self, item, mode, fields, source, destination):
+        changed = False
+
+        def get_new_value(current_value):
+            if mode == 'plain':
+                new_value = current_value.replace(source, destination)
+            elif mode == 'regexp':
+                new_value = re.sub(source, destination, current_value)
+            else:
+                raise ValueError("Unhandled option for text_replace_mode: %s" % mode)
+            return new_value
+
+        for field in fields:
+            # validation
+            if field == 'pdf_url':
+                if not IBibliographicItem.providedBy(item):
+                    continue
+
+                current = item.pdf_url
+                new = get_new_value(current)
+                if current != new:
+                    item.pdf_url = new
+                    changed = True
+            elif field == 'text':
+                if IBaseContent.providedBy(item):
+                    at_field = item.getField('text')
+                    if not at_field:
+                        logger.error("%s has no field: %s", item, field)
+                        continue
+
+                    current = at_field.getAccessor(item)()
+                    new = get_new_value(current)
+                    if current != new:
+                        at_field.getMutator(item)(new)
+                        changed = True
+                elif base_hasattr(item, 'text'):
+                    current = item.text
+                    new = get_new_value(current)
+                    if current != new:
+                        item.text = new
+                        changed = True
+
+        if changed:
+            item.reindexObject(idxs=['SearchableText'])
+
+        return changed
 
     def update(self):
         self.old_keywords = []
@@ -407,8 +519,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     if ctbrs and data['handle_contributors']:
                         # try at
                         try:
-                            if item.Contributors and not overwrite:
-                                for i in item.Contributors:
+                            if item.Contributors() and not overwrite:
+                                for i in item.Contributors():
                                     if i not in ctbrs:
                                         ctbrs.insert(0, i)
                             item.setContributors(tuple(ctbrs))
@@ -494,8 +606,19 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                               ppath, keywords, trace)
                     logger.error(msg)
                     ilogs.append(msg)
+
+            if data['handle_text_replace']:
+                if self.replace_text(
+                        item=item,
+                        mode=data['text_replace_mode'],
+                        fields=data['text_replace_fields'],
+                        destination=data['text_replace_destination'],
+                        source=data['text_replace_source']):
+                    changed = True
+
             if changed:
-                ilogs.append('<li>%s changed</li>\n' % ppath)
+                ilogs.append('<li><a href="%s" target="_new">%s</a> changed</li>\n' % (
+                    ppath, item.absolute_url()))
                 item.reindexObject()
         if ilogs:
             ilogs.insert(0, u"<strong>MassChange complete</strong>")
