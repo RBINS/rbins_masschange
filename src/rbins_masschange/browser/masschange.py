@@ -12,6 +12,7 @@ from collective.z3cform.keywordwidget.field import Keywords
 from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
 from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
 from plone.app.dexterity.behaviors.metadata import IOwnership
+from plone.app.iterate.interfaces import ConflictError
 from plone.app.relationfield.behavior import IRelatedItems as BIRelatedItems
 from plone.autoform import directives
 from plone.autoform.form import AutoExtensibleForm
@@ -195,8 +196,11 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         self.old_keywords = []
         try:
             self.old_keywords = [a for a in self.context.Subject()]
-        except:
+        except ConflictError:
+            raise
+        except Exception:
             pass
+
         psson = 'paths'
         sson = 'selected_obj_paths'
         obs = []
@@ -204,18 +208,18 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         ssonvalues = self.request.form.get(sson, [])
         tp = self.request.form.get('orig_template', '')
         # coming from folder_contents with filters and collections
-        if (
-                                    tp in ['folder_contents'] and
-                                isinstance(pssonvalues, list) and pssonvalues and
-                        isinstance(ssonvalues, list) and ssonvalues
-        ):
+        if (tp in ['folder_contents'] and
+                isinstance(pssonvalues, list) and pssonvalues and
+                isinstance(ssonvalues, list) and ssonvalues):
             if isinstance(pssonvalues, list) and pssonvalues:
                 for item in pssonvalues:
                     try:
                         v = str(item)
                         self.context.restrictedTraverse(v)
                         obs.append(item)
-                    except:
+                    except ConflictError:
+                        raise
+                    except Exception:
                         pass
         else:
             # coming from folder_contents with filters
@@ -225,7 +229,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         v = str(item)
                         self.context.restrictedTraverse(v)
                         obs.append(item)
-                    except:
+                    except ConflictError:
+                        raise
+                    except Exception:
                         pass
             # coming from other cases
             elif sson in self.request.form:
@@ -234,7 +240,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         v = str(item)
                         self.context.restrictedTraverse(v)
                         obs.append(item)
-                    except:
+                    except ConflictError:
+                        raise
+                    except Exception:
                         pass
         ret = super(MassChangeForm, self).update()
         if obs:
@@ -245,6 +253,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 for i in obs:
                     try:
                         uids.append(IUUID(portal.restrictedTraverse(i)))
+                    except ConflictError:
+                        raise
                     except Exception:
                         continue
                 obs = self.widgets[sson].separator.join(uids)
@@ -293,7 +303,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     ifc = IAllowDiscussion(item)
                     ifc.allow_discussion = allow_discussion
                     changed = True
-                except (TypeError,) as exc:
+                except TypeError:
                     # does not handle for now AT based content
                     # try at
                     try:
@@ -301,11 +311,15 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         try:
                             item.allowDiscussion(allow_discussion)
                             done = True
+                        except ConflictError:
+                            raise
                         except Exception:
                             pass
                         try:
                             item.editIsDiscussable(allow_discussion)
                             done = True
+                        except ConflictError:
+                            raise
                         except Exception:
                             pass
                         if done:
@@ -318,7 +332,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     ifc = IExcludeFromNavigation(item)
                     ifc.exclude_from_nav = exclude_from_nav
                     changed = True
-                except (TypeError,) as exc:
+                except TypeError:
                     # does not handle for now AT based content
                     # try at
                     try:
@@ -341,7 +355,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                                     ctbrs.insert(0, i)
                         ownership.contributors = tuple(ctbrs)
                         changed = True
-                except (TypeError,) as exc:
+                except TypeError:
                     # does not handle for now AT based content
                     if ctbrs and data['handle_contributors']:
                         # try at
@@ -376,6 +390,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                             item.setRelatedItems(related + xxx)
                             changed = True
                         return changed
+                except ConflictError:
+                    raise
                 except Exception:
                     additem = None
                 # dexterity
@@ -393,13 +409,17 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                                      for obj in (related + xxx)])
                                 changed = True
                             return changed
+                    except ConflictError:
+                        raise
                     except Exception:
                         additem = None
                 if additem is not None:
                     changed = additem(data['related_obj_paths'], related)
             try:
                 oldk = [a for a in self.context.Subject()]
-            except:
+            except ConflictError:
+                raise
+            except Exception:
                 oldk = []
             oldk.sort()
             if (keywords != oldk) and data['handle_keywords']:
@@ -418,6 +438,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                                     keywords.insert(0, val)
                         item.subject = keywords
                         changed = True
+                except ConflictError:
+                    raise
                 except Exception:
                     trace = traceback.format_exc()
                     msg = ('<li>%s %s: cant change keywords '
