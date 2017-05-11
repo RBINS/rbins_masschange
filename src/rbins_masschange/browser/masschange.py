@@ -264,10 +264,11 @@ class IMassChangeSchema(interface.Interface):
         title=u"Fields to update",
         required=False,
         description=u"Select fields where you want to apply the text replace",
-        default=('text', 'pdf_url', 'publication_url'),
+        default=('text', 'pdf_url', 'title', 'publication_url'),
         value_type=zope.schema.Choice(
             vocabulary=make_vocabulary(
                 (u'text', u"Text body (text)"),
+                (u'title', u"Page title (title)"),
                 (u'pdf_url', u"PDF URL (pdf_url)"),
                 (u'publication_url', u"Online URL (publication_url)")),
         ))
@@ -332,7 +333,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 if current != new:
                     item.pdf_url = new
                     changed = True
-            if field == 'publication_url':
+            elif field == 'publication_url':
                 if not IBibliographicItem.providedBy(item):
                     continue
 
@@ -368,6 +369,12 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         else:
                             item.text = new
                         changed = True
+            elif field == 'title':
+                current = item.Title()
+                new = get_new_value(current)
+                if current != new:
+                    item.setTitle(new)
+                    changed = True
 
         if changed:
             item.reindexObject(idxs=['SearchableText'])
