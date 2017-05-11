@@ -31,6 +31,7 @@ setup(name='rbins_masschange',
           # -*- Extra requirements: -*-
           "chardet",
           "collective.z3cform.keywordwidget",
+          "plone.api",
           "plone.formwidget.contenttree",
           "plone.formwidget.contenttree",
           "plone.formwidget.masterselect",

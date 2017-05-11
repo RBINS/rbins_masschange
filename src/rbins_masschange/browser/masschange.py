@@ -7,12 +7,16 @@ import traceback
 import plone.z3cform.templates
 import z3c.form
 import zope.schema
+from OFS.CopySupport import CopyError
 from Products.Archetypes.interfaces import IBaseContent
 from Products.CMFBibliographyAT.interface.content import IBibliographicItem
+from Products.CMFCore.interfaces._content import IFolderish
 from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.utils import base_hasattr
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
+from Products.statusmessages.interfaces import IStatusMessage
 from collective.z3cform.keywordwidget.field import Keywords
+from plone import api
 from plone.app.dexterity.behaviors.discussion import IAllowDiscussion
 from plone.app.dexterity.behaviors.exclfromnav import IExcludeFromNavigation
 from plone.app.dexterity.behaviors.metadata import IOwnership
@@ -264,11 +268,12 @@ class IMassChangeSchema(interface.Interface):
         title=u"Fields to update",
         required=False,
         description=u"Select fields where you want to apply the text replace",
-        default=('text', 'pdf_url', 'title', 'publication_url'),
+        default=('text',),
         value_type=zope.schema.Choice(
             vocabulary=make_vocabulary(
                 (u'text', u"Text body (text)"),
                 (u'title', u"Page title (title)"),
+                (u'short-name', u"Short name (id) - not allowed for folders"),
                 (u'pdf_url', u"PDF URL (pdf_url)"),
                 (u'publication_url', u"Online URL (publication_url)")),
         ))
@@ -323,6 +328,9 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
             return new_value
 
         for field in fields:
+            if field == 'short-name':
+                continue
+
             # validation
             if field == 'pdf_url':
                 if not IBibliographicItem.providedBy(item):
@@ -346,7 +354,7 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 if IBaseContent.providedBy(item):
                     at_field = item.getField('text')
                     if not at_field:
-                        logger.error("%s has no field: %s", item, field)
+                        IStatusMessage(self.request).add("%s has no field: %s" % (item.absolute_url(), field), 'error')
                         continue
 
                     current = at_field.getAccessor(item)()
@@ -376,8 +384,20 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                     item.setTitle(new)
                     changed = True
 
-        if changed:
-            item.reindexObject(idxs=['SearchableText'])
+        if 'short-name' in fields:
+            if IFolderish.providedBy(item):
+                IStatusMessage(self.request).add('Mass change of short name is forbidden for folder : %s' % item.absolute_url())
+            else:
+                current = item.id
+                new = str(get_new_value(current))
+                if current != new:
+                    try:
+                        api.content.rename(item, new_id=new)
+                        changed = True
+                    except CopyError:
+                        IStatusMessage(self.request).add('Rename failed : %s' % item.absolute_url())
+        elif changed:
+                item.reindexObject(idxs=['SearchableText'])
 
         return changed
 
