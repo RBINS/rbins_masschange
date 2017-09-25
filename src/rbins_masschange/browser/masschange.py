@@ -273,6 +273,7 @@ class IMassChangeSchema(interface.Interface):
             vocabulary=make_vocabulary(
                 (u'text', u"Text body (text)"),
                 (u'title', u"Page title (title)"),
+                (u'description', u"Description (description)"),
                 (u'short-name', u"Short name (id) - not allowed for folders"),
                 (u'pdf_url', u"PDF URL (pdf_url)"),
                 (u'publication_url', u"Online URL (publication_url)")),
@@ -287,6 +288,7 @@ class IMassChangeSchema(interface.Interface):
         vocabulary=make_vocabulary(
             (u'plain', u"Replace plain text by another one"),
             (u'regexp', u"Replace pattern using regular expression."),
+            (u'empty', u"Set text on all empty fields."),
         )
     )
     directives.widget(text_replace_mode=RadioFieldWidget)
@@ -299,7 +301,7 @@ class IMassChangeSchema(interface.Interface):
     text_replace_destination = zope.schema.TextLine(
         title=u"Replacement text / pattern",
         required=False,
-        description=u"In regular expression mode, you can use \1, \2, etc. here to get pattern groups",
+        description=u"In regular expression mode, you can use \\1, \\2, etc. here to get pattern groups",
     )
 
 
@@ -323,6 +325,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 new_value = current_value.replace(source, destination)
             elif mode == 'regexp':
                 new_value = re.sub(source, destination, current_value)
+            elif mode == 'empty':
+                new_value = current_value if current_value else destination
             else:
                 raise ValueError("Unhandled option for text_replace_mode: %s" % mode)
             return new_value
@@ -383,6 +387,13 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 if current != new:
                     item.setTitle(new)
                     changed = True
+            elif field == 'description':
+                current = item.Description()
+                new = get_new_value(current)
+                if current != new:
+                    item.setDescription(new)
+                    changed = True
+
 
         if 'short-name' in fields:
             if IFolderish.providedBy(item):
