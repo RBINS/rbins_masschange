@@ -295,6 +295,7 @@ class IMassChangeSchema(interface.Interface):
 
     text_replace_source = zope.schema.TextLine(
         title=u"Text / pattern to replace",
+        description=u"Set the plain text or regular expression to replace. If you choose 'set text on all empty fields', leave this field empty.",
         required=False,
     )
 
@@ -393,7 +394,6 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 if current != new:
                     item.setDescription(new)
                     changed = True
-
 
         if 'short-name' in fields:
             if IFolderish.providedBy(item):
