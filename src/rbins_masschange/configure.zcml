@@ -32,10 +32,20 @@
       handler="rbins_masschange.setuphandlers.setupVarious">
     <depends name="content"/>
   </genericsetup:importStep>
+
+  <genericsetup:upgradeStep
+      title="Add action button"
+      description="Add action button on contents view and ensure dependencies installation"
+      source="2"
+      destination="3"
+      handler=".upgrade.v3"
+      profile="rbins_masschange:default"/>
+
   <adapter name="OpenClose" factory=".catalog.OpenClose"/>
   <adapter name="Contributors" factory=".catalog.AContributors"/>
   <adapter name="Contributors" factory=".catalog.BContributors"/>
   <adapter name="ZContributors" factory=".catalog.AZContributors"/>
   <adapter name="ZContributors" factory=".catalog.BZContributors"/>
   <!-- vim:set ft=xml: -->
+
 </configure>
