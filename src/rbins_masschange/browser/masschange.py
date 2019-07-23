@@ -42,6 +42,7 @@ from zope.interface import implementer
 from zope.intid.interfaces import IIntIds
 from zope.schema.vocabulary import SimpleTerm
 from zope.schema.vocabulary import SimpleVocabulary
+from Products.CMFPlone.utils import safe_unicode
 
 try:
     from plone.app.widgets.interfaces import IWidgetsLayer
@@ -69,6 +70,13 @@ def make_vocabulary(*items):
     terms = [SimpleTerm(value=value, token=value, title=label)
              for value, label in items]
     return SimpleVocabulary(terms)
+
+
+def safe_encode(s, coding='utf-8', errors='surrogateescape'):
+    """encode str to bytes, with round-tripping "invalid" bytes"""
+    if s is None:
+        return None
+    return s.encode(coding, errors)
 
 
 class IMassChangeSchema(interface.Interface):
@@ -310,6 +318,16 @@ def default_keywords(self):
     return self.view.old_keywords[:]
 
 
+def safe_encode(s, coding='utf-8', errors='surrogateescape'):
+    """encode str to bytes, with round-tripping "invalid" bytes"""
+    if type(s) == str:
+        return s
+    elif s is None:
+        return None
+    else:
+        return s.encode(coding, errors)
+
+
 class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
     """ A form to output a HTML masschange from chosen parameters """
     schema = IMassChangeSchema
@@ -322,12 +340,19 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         changed = False
 
         def get_new_value(current_value):
+            if type(current_value) == str:
+                s = safe_encode(source)
+                d = safe_encode(destination)
+            else:
+                s = safe_unicode(source)
+                d = safe_unicode(destination)
+
             if mode == 'plain':
-                new_value = current_value.replace(source, destination)
+                new_value = current_value.replace(s, d)
             elif mode == 'regexp':
-                new_value = re.sub(source, destination, current_value)
+                new_value = re.sub(s, d, current_value)
             elif mode == 'empty':
-                new_value = current_value if current_value else destination
+                new_value = current_value if current_value else d
             else:
                 raise ValueError("Unhandled option for text_replace_mode: %s" % mode)
             return new_value
