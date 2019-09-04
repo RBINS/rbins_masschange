@@ -23,28 +23,27 @@ def setupVarious(context):
 
     portal = context.getSite()
     catalog = portal.portal_catalog
-
-    for k, tp, extra in [
+    columns = catalog._catalog.schema.keys()
+    new_catalog_values = [
         ('ZContributors', 'ZCTextIndex', Extra),
         ('Contributors',  'KeywordIndex', None),
         ('OpenClose',  'FieldIndex', None),
-    ]:
+    ]
+    for k, tp, extra in new_catalog_values:
         if k not in catalog.Indexes:
-            l.error('Creating %s in catalog' % k)
+            l.info('Creating %s index in catalog' % k)
             catalog.addIndex(k, tp, extra)
-            catalog.addColumn(k)
             catalog.reindexIndex(k, portal.REQUEST)
 
-    columns = catalog._catalog.schema
     reindex = True
-    for k in ('ZContributors', 'Contributors', 'OpenClose'):
+    for k, _, _ in new_catalog_values:
         if k not in columns:
-            l.warn('Creating %s in catalog' % k)
+            l.info('Creating %s column in catalog' % k)
             catalog.addColumn(k)
             reindex = True
 
     if reindex:
-        l.warn('Reindexing')
+        l.info('Reindexing')
         # reindex documents
         brains = catalog.searchResults(**{})
         lb = len(brains)
@@ -55,7 +54,7 @@ def setupVarious(context):
             if done != adone:
                 # print each 10%
                 done = adone
-                l.warn('Done %s/%s (%s%s)' % (i, lb, cur, '%'))
+                l.info('Done %s/%s (%s%s)' % (i, lb, cur, '%'))
                 transaction.commit()
             b.getObject().reindexObject()
     transaction.commit()
