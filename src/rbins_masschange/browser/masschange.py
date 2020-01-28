@@ -4,6 +4,8 @@ import logging
 import re
 import traceback
 
+from rbins_masschange.utils import magicstring
+
 import plone.z3cform.templates
 import z3c.form
 import zope.schema
@@ -13,6 +15,7 @@ from Products.CMFBibliographyAT.interface.content import IBibliographicItem
 from Products.CMFCore.interfaces._content import IFolderish
 from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.utils import base_hasattr
+from Products.Five import BrowserView
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile as FiveViewPageTemplateFile
 from Products.statusmessages.interfaces import IStatusMessage
 from collective.z3cform.keywordwidget.field import Keywords
@@ -26,6 +29,7 @@ from plone.app.textfield.value import RichTextValue
 from plone.autoform import directives
 from plone.autoform.form import AutoExtensibleForm
 from plone.formwidget.masterselect import MasterSelectBoolField
+from plone.i18n.normalizer import baseNormalize
 from plone.uuid.interfaces import IUUID
 from z3c.form.browser import textlines
 from z3c.form.browser.checkbox import CheckBoxFieldWidget
@@ -722,5 +726,32 @@ for k in ('keywords', 'local_keywords',):
 masschange_form_frame = plone.z3cform.layout.wrap_form(
     MassChangeForm,
     index=FiveViewPageTemplateFile("masschange.pt"))
+
+
+class DeduplicateKeywords(BrowserView):
+    def __call__(self, *args, **kwargs):
+        catalog = getToolByName(self.context, 'portal_catalog')
+        keywords = catalog.uniqueValuesFor(u'Subject')
+
+        normalized_keywords = {}
+        for keyword in keywords:
+            normalized_keyword = baseNormalize(magicstring(keyword.strip()).decode('utf-8')).strip()
+            normalized_keywords.setdefault(normalized_keyword, []).append(keyword)
+
+        pkm = getToolByName(self.context, 'portal_keyword_manager')
+        putils = getToolByName(self.context, "plone_utils")
+        for normalized_keyword, keywords in normalized_keywords.iteritems():
+            if len(keywords) == 1:
+                continue
+            pkm.change(keywords, normalized_keyword, context=self.context, indexName=u'Subject')
+            putils.addPortalMessage(u'Changed {keywords} to {normalized_keyword}'.format(
+                    keywords=', '.join(keywords).decode('utf8'),
+                    normalized_keyword=normalized_keyword.decode('utf8')
+                ),
+                type='info',
+            )
+
+        return self.request.response.redirect(self.context.absolute_url())
+
 
 # vim:set et sts=4 ts=4 tw=80:
