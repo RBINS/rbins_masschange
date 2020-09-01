@@ -317,6 +317,28 @@ class IMassChangeSchema(interface.Interface):
         description=u"In regular expression mode, you can use \\1, \\2, etc. here to get pattern groups",
     )
 
+    handle_views = MasterSelectBoolField(
+        title=u"Handle views",
+        required=False,
+        default=False,
+        slave_fields=[{
+            'name': 'view',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_views-0',
+            'slaveID': '#formfield-form-widgets-view',
+        }]
+    )
+    view = zope.schema.Choice(
+        title=u"View",
+        required=False,
+        description=u"",
+        vocabulary=make_vocabulary(
+            (u'view', u"Default view"),
+            (u'view_without_contents', u"View without folder contents"),
+        )
+    )
+
 
 def default_keywords(self):
     return self.view.old_keywords[:]
@@ -521,6 +543,8 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
         if errors:
             self.status = "Please correct errors"
             return
+        portal_types = getToolByName(self.context, 'portal_types')
+
         keywords = []
         for k in 'keywords', 'local_keywords', 'manual_keywords':
             d = data.get(k, None)
@@ -701,6 +725,12 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                         fields=data['text_replace_fields'],
                         destination=data['text_replace_destination'],
                         source=data['text_replace_source']):
+                    changed = True
+
+            if data['handle_views']:
+                view = data['view']
+                if view and view in portal_types[item.portal_type].view_methods:
+                    item.setLayout(view)
                     changed = True
 
             if changed:
