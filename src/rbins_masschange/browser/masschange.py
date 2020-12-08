@@ -339,6 +339,25 @@ class IMassChangeSchema(interface.Interface):
         )
     )
 
+    handle_richtext_format = MasterSelectBoolField(
+        title=u"Handle RichText format",
+        required=False,
+        default=False,
+        slave_fields=[{
+            'name': 'richtext_format',
+            'action': 'show',
+            'hide_values': True,
+            'masterSelector': '#form-widgets-handle_richtext_format-0',
+            'slaveID': '#formfield-form-widgets-richtext_format',
+        }]
+    )
+    richtext_format = zope.schema.Choice(
+        title=u"RichText format",
+        required=False,
+        description=u"",
+        vocabulary="rbins_masschange.mimetypes",
+    )
+
 
 def default_keywords(self):
     return self.view.old_keywords[:]
@@ -731,6 +750,13 @@ class MassChangeForm(AutoExtensibleForm, z3c.form.form.Form):
                 view = data['view']
                 if view and view in portal_types[item.portal_type].view_methods:
                     item.setLayout(view)
+                    changed = True
+
+            if data['handle_richtext_format']:
+                format = data['richtext_format']
+                if format:
+                    field = item.getField('text')
+                    field.set(item, item.getRawText(), mimetype=format)
                     changed = True
 
             if changed:

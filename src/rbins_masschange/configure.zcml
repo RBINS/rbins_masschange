@@ -16,6 +16,10 @@
       component=".vocabulary.ContributorsVocabulary"
       name="rbins_masschange.contributors"
   />
+  <utility
+      component=".vocabulary.MimeTypesVocabulary"
+      name="rbins_masschange.mimetypes"
+  />
   <five:registerPackage package="." initialize=".initialize"/>
   <genericsetup:registerProfile
       name="default"

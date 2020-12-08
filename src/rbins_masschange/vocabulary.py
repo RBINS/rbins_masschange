@@ -8,6 +8,7 @@ from zope.schema.interfaces import IVocabularyFactory, IContextSourceBinder
 from Products.CMFPlone.utils import safe_unicode, getToolByName
 from zope.site.hooks import getSite
 
+from plone.app.textfield.utils import getAllowedContentTypes
 from plone.i18n.normalizer.base import baseNormalize
 
 from rbins_masschange.utils import magicstring, infolder_keywords
@@ -73,4 +74,26 @@ class ContributorsVocabularyFactory(object):
         return SimpleVocabulary(items)
 
 ContributorsVocabulary = ContributorsVocabularyFactory()
-# vim:set et sts=4 ts=4 tw=80:
+
+
+class MimeTypesVocabularyFactory(object):
+    """
+    """
+    interface.implements(IVocabularyFactory)
+
+    def lookupMime(self, name):
+        mimetypes = self.mimetool.lookup(name)
+        if len(mimetypes):
+            return mimetypes[0].name()
+        else:
+            return name
+
+    def __call__(self, context, query=None):
+        self.mimetool = getToolByName(context, 'mimetypes_registry')
+
+        mimetypes = getAllowedContentTypes()
+        terms = [SimpleTerm(value=mimetype, token=mimetype, title=self.lookupMime(mimetype))
+                 for mimetype in mimetypes]
+        return SimpleVocabulary(terms)
+
+MimeTypesVocabulary = MimeTypesVocabularyFactory()
