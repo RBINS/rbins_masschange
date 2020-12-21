@@ -45,6 +45,15 @@
       handler=".upgrade.v3"
       profile="rbins_masschange:default"/>
 
+  <genericsetup:upgradeStep
+      title="Add portlets action button"
+      description="Add portlets action button on contents view"
+      source="3"
+      destination="4"
+      handler=".upgrade.v4"
+      profile="rbins_masschange:default"/>
+
+
   <adapter name="OpenClose" factory=".catalog.OpenClose"/>
   <adapter name="Contributors" factory=".catalog.AContributors"/>
   <adapter name="Contributors" factory=".catalog.BContributors"/>

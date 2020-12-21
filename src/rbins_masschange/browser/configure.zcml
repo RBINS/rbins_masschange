@@ -12,6 +12,11 @@
       permission="rbins.masschange" />
  <browser:page
       for="*"
+      name="rbins_masschangeportlets_form"
+      class=".masschange_portlets.masschangeportlets_form_frame"
+      permission="rbins.masschange" />
+ <browser:page
+      for="*"
       name="rbins_masschange_deduplicate_keywords"
       class=".masschange.DeduplicateKeywords"
       permission="rbins.masschange" />

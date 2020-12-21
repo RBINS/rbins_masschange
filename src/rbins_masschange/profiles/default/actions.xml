@@ -14,5 +14,17 @@
       </property>
       <property name="visible">True</property>
     </object>
+    <object name="mass_change_portlets" meta_type="CMF Action" i18n:domain="mars">
+      <property name="title" i18n:translate="">Mass change portlets</property>
+      <property name="description" i18n:translate=""></property>
+      <property name="url_expr">string:@@rbins_masschangeportlets_form:method</property>
+      <property name="link_target"></property>
+      <property name="icon_expr"></property>
+      <property name="available_expr">python: True</property>
+      <property name="permissions">
+        <element value="Modify portal content"/>
+      </property>
+      <property name="visible">True</property>
+    </object>
   </object>
 </object>

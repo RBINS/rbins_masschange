@@ -15,3 +15,9 @@ def v3(context, logger=None):
 
     if not quickinstaller.isProductInstalled('plone.formwidget.autocomplete'):
         quickinstaller.installProduct('plone.formwidget.autocomplete')
+
+
+def v4(context, logger=None):
+    setup = getToolByName(context, 'portal_setup')
+    setup.runImportStepFromProfile(PROFILE_ID, 'actions',
+                                   run_dependencies=False)
